@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="orderMapper">
+
+<resultMap type="productDTO" id="orderSelectMap">
+  <id column="product_code" property="productCode"/>
+  <result column="proposer_id" property="proposerId"/>
+  <result column="product_name" property="productName"/>
+  <result column="product_img" property="productImg"/>
+  <result column="product_url" property="productUrl"/>
+  <result column="product_qty" property="productQty"/>
+  <result column="product_price" property="productPrice"/>
+ <result column="requirement" property="requirement"/>
+   <result column="product_desc" property="productDesc"/>
+ <result column="requested_date" property="requestedDate"/>
+  <result column="deadline_date" property="deadlineDate"/>
+  <result column="depart_nation" property="departNation"/>
+  <result column="arrival_nation" property="arrivalNation"/>
+  <result column="trade_state" property="tradeState"/> 
+  <result column="nation_currency" property="nationCurrency"/> 
+  <result column="exchange_rate" property="ceil"/> 
+</resultMap>
+
+<resultMap type="userDTO" id="userMap">
+  <id column="member_id" property="memberId"/>
+  <result column="member_name" property="memberName"/>
+  <result column="member_img" property="memberImg"/>
+	<association property="offer" javaType="offerDTO">
+		<id column="offer_code" property="offerCode" />
+		<result column="offer_Id" property="offerId" />
+		</association>
+</resultMap>
+
+<insert id="insert" parameterType="productDTO">
+	insert into product(
+	product_code, proposer_id, product_name, product_img,
+	product_url, product_qty, product_price, product_desc, requirement,
+	requested_date, deadline_date, depart_nation, arrival_nation)
+	values(
+	'p'||lpad(product_seq.nextval,10,'0'),#{proposerId},#{productName},#{productImg},
+	#{productUrl},#{productQty},#{productPrice},#{productDesc},#{requirement},
+	sysdate,#{deadlineDate},#{departNation},#{arrivalNation})
+</insert>
+
+
+
+ <delete id="delete"  parameterType="map">
+DELETE  from product
+where proposer_id=#{proposerId}  and product_code=#{productCode}
+</delete> 
+
+<select id="mySelect" resultMap="orderSelectMap" parameterType="String"> 
+select product_code, proposer_id, product_name, product_img, product_price, deadline_date, depart_nation, arrival_nation, trade_state
+ from product
+where proposer_id=#{_parameter} and deadline_date &gt; sysdate and trade_state='no offer'
+</select>
+
+<update id="myUpdate" parameterType="productDTO">
+update product set 
+ product_qty=#{productQty}, product_price=#{productPrice}, 
+requirement=#{requirement}, product_desc=#{productDesc}, deadline_date=#{deadlineDate}, depart_nation=#{departNation}
+where product_code=#{productCode} 
+</update>
+
+<select id="myDetail" parameterType="String" resultMap="orderSelectMap">
+select product.requirement,product.product_code, product.proposer_id,product.product_url,product.product_name, product.product_img, product.product_qty, product.product_price, product.product_desc, product.requested_date, product.deadline_date,product.depart_nation, product.arrival_nation,currency.nation_currency, currency.exchange_rate
+from nation, currency, product
+where nation.nation_currency = currency.nation_currency and
+nation.nation_name = product.arrival_nation and product.product_code=#{_parameter}
+</select>
+
+<select id="myDeadline" resultMap="orderSelectMap" parameterType="String">
+select product_code, proposer_id, product_name, product_img, product_price, deadline_date, depart_nation, arrival_nation, trade_state
+ from product
+where proposer_id=#{_parameter} and deadline_date &lt; sysdate
+</select>
+
+<!-- 거래중 -->
+<select id="myOffer" resultMap="orderSelectMap" parameterType="String">
+select product_code, proposer_id, product_name, product_img, product_price, deadline_date, depart_nation, arrival_nation, trade_state
+ from product
+where proposer_id=#{_parameter} and deadline_date &gt; sysdate and trade_state='in deal'
+</select>
+
+<!-- 거래완료 -->
+<select id="myComplete" resultMap="orderSelectMap" parameterType="String">
+select product_code, proposer_id, product_name, product_img, product_price, deadline_date, depart_nation, arrival_nation, trade_state
+ from product
+where proposer_id=#{_parameter} and trade_state='complete'
+</select>
+
+<!-- offer 사용자 list -->
+<select id="myUserOffer" parameterType="String" resultMap="userMap">
+	select m.member_id, m.member_img,m.member_name,o.offer_id ,o.offer_code
+	from offer o join member m
+	on  o.offer_id=m.member_id
+	where o.product_code=#{_parameter}
+	</select>
+
+
+
+</mapper>

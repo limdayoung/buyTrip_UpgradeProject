@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="userMapper">
+	<sql id="selectUser">
+		select member_id,member_name,member_password,mobile,member_img from member
+	</sql>
+	
+	<resultMap type="userDTO" id="userSelectMap">
+  		<id column="member_id" property="memberId"/>
+  		<result column="member_password" property="memberPassword"/>
+  		<result column="member_name" property="memberName"/>
+  		<result column="mobile" property="mobile"/>
+  		<result column="member_img" property="memberImg"/>
+	</resultMap>
+
+	<!-- id에 해당하는 정보 검색 -->
+	<select id="selectUserById" parameterType="string" resultMap="userSelectMap">
+		<include refid="selectUser" />
+		where member_id=#{_parameter}
+	</select>
+
+	<insert id="registerUser" parameterType="userDTO">
+		insert into
+		member(member_id,member_name,member_password,mobile,member_img)
+		values(#{memberId},#{memberName},#{memberPassword},#{mobile},'https://ssl.gstatic.com/accounts/ui/avatar_2x.png')
+	</insert>
+
+	<select id="login" resultType="userDTO" parameterType="userDTO">
+		<include refid="selectUser"></include>
+		where member_id=#{memberId} and member_password=#{memberPassword}
+	</select>
+	
+	<!-- 회원정보 수정 -->
+	<update id="updateMember" parameterType="userDTO"> 
+		update member
+		set member_password=#{memberPassword},member_name=#{memberName},mobile=#{mobile},member_img=#{memberImg}
+		where member_id=#{memberId}
+	</update>
+	
+ <!-- 삭제 --> 
+ <delete id="delete" parameterType="userDTO">
+  delete from member
+  where member_id=#{memberId} and member_password=#{memberPassword}
+ </delete>
+ 
+<!--  	회원가입 아이디 중복체크 -->
+	<select id="idcheck" resultType="int">
+		select count(*) from member where member_id=#{value}
+	</select>
+	
+	<!-- 회원 탈퇴 비밀번호 체크 -->
+	<select id="passCheck" resultType="int">
+		select count(*) from member where member_password=#{value}
+	</select>
+	
+ 	
+</mapper>

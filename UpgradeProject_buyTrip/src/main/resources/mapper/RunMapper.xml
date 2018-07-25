@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="runMapper">	
+	
+	
+	<resultMap type="productDTO" id="productMap">
+		<id column="product_code" property="productCode"/>
+		<result column="proposer_id" property="proposerId"/>
+		<result column="product_name" property="productName"/>
+		<result column="product_img" property="productImg"/>
+		<result column="product_url" property="productUrl"/>
+		<result column="product_qty" property="productQty"/>
+		<result column="product_price" property="productPrice"/>
+		<result column="requested_date" property="requestedDate"/>
+		<result column="deadline_date" property="deadlineDate"/>
+		<result column="depart_nation" property="departNation"/>
+		<result column="arrival_nation" property="arrivalNation"/>
+		<result column="member_img" property="memberImg"/>
+	</resultMap>
+	
+<!-- 상품등록수 Top3 나라 (상품등록수, 거래완료수, 거래율) -->
+   <select id="highestDeal" resultType="highestDealDTO">
+   select arrivalNation, orderNumber, completedDealNumber, deal, nation_img nationImg
+   from nation,
+   (select arrivalNation, orderNumber, completedDealNumber, deal
+         from (
+         select arrivalNation, orderNumber, completedDealNumber, deal, dense_rank() over(order by orderNumber desc) rank
+         from (
+         select arrival_nation arrivalNation, sum(decode(trade_state, 'complete', 1, 0)) completedDealNumber,
+         count(*) orderNumber, round(sum(decode(trade_state, 'complete', 1, 0))/count(*)*100) deal
+         from product
+         group by arrival_nation))
+         where rank &lt;= 3
+         order by orderNumber desc) a
+   where nation.nation_name = a.arrivalNation
+   </select>
+
+
+	<!-- 여행지 검색 후 상품 List 목록 -->
+	<select id="recentTop4" resultMap="productMap">
+		select  p.product_name,p.product_img,p.product_url,p.product_qty,p.product_price,p.deadline_date,p.requested_date,p.depart_nation,p.arrival_nation,product_code,p.proposer_id
+ 		from(select  p.product_name,p.proposer_id,p.product_img,p.product_url,p.product_qty,p.product_price,p.deadline_date,p.requested_date,p.depart_nation,p.arrival_nation,product_code 
+  			from product p
+  			order by requested_date)p join member m
+		on p.proposer_id = m.member_id
+  		where rownum &lt;= 4 
+	</select>
+	
+	<!-- 환율 API값 update -->
+	<update id="updateExchange" parameterType="map">
+	 	update currency set exchange_rate=replace(#{'money'},',','') where nation_currency=#{city}
+	</update>
+
+</mapper>
+

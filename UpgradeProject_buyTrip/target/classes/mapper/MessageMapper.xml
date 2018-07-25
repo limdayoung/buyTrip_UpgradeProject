@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="messageMapper">	
+
+	<resultMap type="messageDTO" id="messageMap">
+		<result column="product_code" property="productCode"/>
+		<result column="sender_id" property="senderId"/>
+		<result column="receiver_id" property="receiverId"/>
+		<result column="message_content" property="messageContent"/>
+		<result column="send_time" property="sendTime"/>
+		<result column="count" property="count"/>
+		<result column="user_Id" property="userId"/>
+		<result column="member_name" property="memberName"/> 
+		<result column="member_img" property="memberImg"/>
+		<result column="unread" property="unread"/>
+	</resultMap>
+	
+	<select id="selectMessage" parameterType="String" resultMap="messageMap">
+		select * from message
+		where sender_id||receiver_id like '%'||#{userId}||'%' 
+		and sender_id||receiver_id like '%'||#{memberId}||'%'
+		order by send_time
+	</select>
+	
+	<select id="chatList" parameterType="String" resultMap="messageMap">
+
+select user_id, message_content, send_time, member_name, member_img, unread
+from (select user_id, message_content, send_time, member_name, member_img
+from (
+select user_id, message_content, send_time, rk
+from (
+select user_id, message_content, send_time, rank() over(partition by user_id order by send_time desc) rk
+from (
+      select regexp_replace(sender_id||receiver_id, '${_parameter}','') user_id, sender_id, receiver_id, message_content, send_time
+      from message)
+where sender_id||receiver_id like '%'||#{memberId}||'%')
+where rk = 1)u, member
+where u.user_id = member.member_id)a, (select sender_id, sum(decode(read_time, null, 1)) unread
+from message
+where receiver_id = #{_parameter}
+group by sender_id)b
+where a.user_id = b.sender_id
+order by case when unread != 0 then 0 else 1 end, send_time desc
+	</select>
+	
+	<select id="unreadMessage" parameterType="String" resultType="java.lang.Integer">
+		select count(*) unread
+		from message
+		where receiver_id = #{memberId} and read_time is null
+	</select>
+	
+	<insert id="insertMessage" parameterType="messageDTO">
+		insert into message values(#{memberId}, #{userId}, #{messageContent}, sysdate, null)
+	</insert>
+	
+	<update id="updateState" parameterType="MessageDTO">
+		update message
+		set read_time = sysdate
+		where sender_id = #{userId}
+		and receiver_id = #{memberId}
+	</update>
+
+</mapper>
+

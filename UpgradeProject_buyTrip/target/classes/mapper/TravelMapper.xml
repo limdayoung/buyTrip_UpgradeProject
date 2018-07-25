@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="TravelMapper">
+
+	<resultMap type="travelDTO" id="travelMap">
+		<id column="travel_no" property="travelNo" />
+		<result column="member_id" property="memberId" />
+		<result column="depart_nation" property="departNation" />
+		<result column="arrival_nation" property="arrivalNation" />
+		<result column="arrival_date" property="arrivalDate" />
+		<result column="input_date" property="inputDate" />
+		<result column="notification" property="notification" />
+		<result column="nation_name" property="nationName" />
+		<result column="member_img" property="memberImg" />
+		<result column="countProduct" property="countProduct" />
+	</resultMap>
+
+	<resultMap type="productDTO" id="prductMap">
+		<id column="product_code" property="productCode" />
+		<result column="proposer_id" property="proposerId" />
+		<result column="product_name" property="productName" />
+		<result column="product_img" property="productImg" />
+		<result column="product_url" property="productUrl" />
+		<result column="product_qty" property="productQty" />
+		<result column="product_price" property="productPrice" />
+		<result column="requested_date" property="requestedDate" />
+		<result column="deadline_date" property="deadlineDate" />
+		<result column="depart_nation" property="departNation" />
+		<result column="arrival_nation" property="arrivalNation" />
+		<result column="member_img" property="memberImg" />
+	</resultMap>
+
+	<resultMap type="offerJoinProductDTO" id="offerListMap">
+		<id column="offer_code" property="offerCode" />
+		<association property="productDTO" javaType="ProductDTO">
+			<id column="product_code" property="productCode" />
+			<result column="proposer_id" property="proposerId" />
+			<result column="product_img" property="productImg" />
+			<result column="requested_date" property="requestedDate" />
+			<result column="product_url" property="productUrl" />
+			<result column="product_qty" property="productQty" />
+			<result column="requirement" property="requirement" />
+			<result column="product_desc" property="productDesc" />
+			<result column="trade_state" property="tradeState" />
+			<result column="deadline_date" property="deadlineDate" />
+			<result column="product_name" property="productName" />
+			<result column="arrival_nation" property="arrivalNation" />
+			<result column="depart_nation" property="departNation" />
+			<result column="product_price" property="productPrice" />
+		</association>
+	</resultMap>
+
+
+	<insert id="insertTravel" parameterType="travelDTO">
+		insert into
+		travel(travel_no, member_id, depart_nation, arrival_nation,
+		arrival_date)
+		values('t'||lpad(travel_seq.nextval,4,'0'), #{memberId},'한국',#{arrivalNation},#{arrivalDate})
+	</insert>
+
+	<!-- mypage내에 있는 즐겨찾기 여행목록 -->
+	<select id="selectTravel" parameterType="map"
+		resultMap="travelMap">
+		SELECT *
+		FROM ( SELECT ROWNUM RNUM, f.*
+		FROM ( select
+		travel.member_id, travel.depart_nation,
+		travel.arrival_nation,travel.arrival_date, p.countProduct
+		from travel,
+		(select arrival_nation, count(*) countProduct
+		from product
+		where
+		deadline_Date &gt; sysdate
+		group by arrival_nation) p
+		where
+		travel.arrival_nation=p.arrival_nation
+		and
+		travel.arrival_date &gt;
+		sysdate
+		and travel.member_id=#{memberId} ) f )
+		WHERE RNUM BETWEEN
+		#{start} AND #{last}
+	</select>
+
+	<select id="selectTotalPaging" parameterType="String"
+		resultType="java.lang.Integer">
+		select count(*)
+		from travel,
+		(select arrival_nation, count(*)
+		countProduct
+		from product
+		where deadline_Date > sysdate
+		group by
+		arrival_nation) p
+		where travel.arrival_nation=p.arrival_nation
+		and
+		travel.arrival_date > sysdate
+		and travel.member_id=#{memberId}
+	</select>
+
+	<!-- mypage 여행목록 기간만료 여행목록 -->
+	<select id="selectFinishTravel" parameterType="String"
+		resultMap="travelMap">
+		select travel.member_id, travel.depart_nation,
+		travel.arrival_nation,travel.arrival_date, p.countProduct
+		from
+		travel,(select arrival_nation, count(*) countProduct
+		from product
+		where
+		deadline_Date &lt; sysdate
+		group by arrival_nation) p
+		where
+		travel.arrival_nation=p.arrival_nation
+		and travel.arrival_date &lt;
+		sysdate
+		and travel.member_id=#{_parameter}
+	</select>
+
+	<!-- order/order page 에 최근 등록한 여행 리스트 -->
+   <select id="selectRecentTravel" parameterType="String"
+      resultMap="travelMap">
+      select travel.member_id, depart_nation, arrival_nation, arrival_date, input_date,
+      member_name, member_img
+      from travel, member
+      where travel.member_id = member.member_id and arrival_date &gt; sysdate and rownum &lt;=6
+      and notification = 'yes'
+      order by input_date desc
+   </select>
+	
+	<!-- 여행지 검색 후 상품 List 목록 -->
+   <select id="search" parameterType="map" resultMap="prductMap">
+      SELECT *
+      FROM ( SELECT ROWNUM RNUM, f.*
+      FROM(
+      select p.product_code, p.proposer_id,
+      p.product_name,p.product_img,p.product_url,p.product_qty,p.product_price,p.deadline_date,p.requested_date,p.depart_nation,p.arrival_nation,m.member_img
+      from product p join member m
+      on p.proposer_id = m.member_id
+      where
+      arrival_nation=#{nation}
+      order by requested_date desc ) f )
+      WHERE RNUM BETWEEN #{start} AND #{last}
+      </select>
+
+	<select id="selectListCnt" parameterType="string"
+		resultType="Integer">
+		select count(*)
+		from product p join member m
+		on p.proposer_id = m.member_id
+		where arrival_nation=#{_parameter} 
+		order by requested_date desc
+	</select>
+
+	<select id="selectTravelPast" parameterType="string"
+		resultMap="travelMap">
+		select travel_no, member_id, member_img, depart_nation,
+		arrival_nation, arrival_date, notification
+		from member_travel
+		where
+		arrival_date &lt; sysdate
+		order by arrival_date desc
+	</select>
+
+	<delete id="deleteTravel" parameterType="String">
+		delete from
+		travel where travel_no=#{travelNo}
+	</delete>
+
+	<!-- 인수로 전달된 단어로 시작되는 모든 단어 검색하기 -->
+	<select id="selectSuggest" parameterType="string"
+		resultType="string">
+		select nation_name from nation
+		where lower(nation_name) like lower(#{value}) || '%'
+	</select>
+
+	<!-- make an offer -->
+	<insert id="offerDeal" parameterType="offerDTO">
+		insert into
+		offer(offer_code,proposer_id,offer_id,product_code,offer_date,offer_state)
+		values(#{offerCode},#{proposerId},#{offerId},#{productCode},sysdate,'yet')
+	</insert>
+
+	<!-- update product state -->
+	<update id="updateProductState" parameterType="offerDTO">
+		update product
+		set trade_state='in deal'
+		where product_code=#{productCode}
+	</update>
+
+	<!-- 마이페이지에서 확정되지 않은 배달 신청 목록 읽어오기 -->
+	<select id="readDealsYet" parameterType="string"
+		resultMap="offerListMap">
+		select offer.offer_code as offer_code, deadline_date,
+		product_name, arrival_nation, depart_nation, product_price,
+		offer.product_code
+		from offer join product
+		on
+		offer.product_code=product.product_code and offer_id=#{_parameter} and
+		offer_state='yet' and sysdate&lt;deadline_date and  product.trade_state!='complete'
+		order by offer_date desc
+	</select>
+
+	<!-- 마이페이지에서 확정된 배달 신청 목록 읽어오기 -->
+	<select id="readDealsAccepted" parameterType="string"
+		resultMap="offerListMap">
+		select offer.offer_code as offer_code, deadline_date,
+		product_name, arrival_nation, depart_nation, product_price,
+		offer.product_code
+		from offer join product
+		on
+		offer.product_code=product.product_code and offer_id=#{_parameter} and
+		offer_state='accepted'
+		order by offer_date desc
+	</select>
+
+	<!-- 마이페이지에서 기간 만료된 배달 신청 목록 읽어오기 -->
+	<select id="readDealsExpired" parameterType="string"
+		resultMap="offerListMap">
+		select offer.offer_code as offer_code, deadline_date,
+		product_name, arrival_nation, depart_nation, product_price,
+		offer.product_code
+		from offer join product
+		on
+		offer.product_code=product.product_code and offer_id=#{_parameter} and
+		offer_state='yet' and sysdate>deadline_date
+		order by offer_date desc
+	</select>
+
+	<!-- DB에서 배달 신청 기록 삭제하기 -->
+	<delete id="deleteDeal" parameterType="string">
+		delete from offer
+		where
+		offer_code=#{_parameter}
+	</delete>
+
+	<!-- 해당 product 배달을 신청한 사람 수 뽑아내기 -->
+	<select id="countDeal" parameterType="string"
+		resultType="string">
+		select offer_id
+		from offer
+		where product_code=
+		(select product_code from offer where offer_code=#{_parameter})
+	</select>
+
+	<!-- 해당 product를 no offer 상태로 업데이트하기 -->
+	<update id="updateProductStateToNoOffer" parameterType="string">
+		update
+		product
+		set trade_state='no offer'
+		where product_code=
+		(select product_code from offer where offer_code=#{_parameter})
+	</update>
+	
+	
+   <!-- 가격 순 -->
+   <select id="costList" parameterType="string" resultMap="prductMap">
+      SELECT *
+      FROM ( SELECT ROWNUM RNUM, f.*
+      FROM(
+      select p.product_code,
+      p.product_name,p.product_img,p.product_url,p.product_qty,p.product_price,p.deadline_date,p.requested_date,p.depart_nation,p.arrival_nation,m.member_img
+      from product p join member m
+      on p.proposer_id = m.member_id
+      where
+      arrival_nation=#{nation} 
+      order by product_price desc
+      ) f )
+      WHERE RNUM BETWEEN #{start} AND #{last}
+      order by product_price desc
+   </select>
+   
+   
+   	<update id="completeOffer1" parameterType="String" >
+update offer set offer_state='accepted' where offer_code=#{_parameter}
+	</update>
+	
+	
+		<update id="updateProductState1" parameterType="String" >
+ update product set trade_state='complete' where product_code=(select product_code from offer 
+ where offer_code=#{_parameter})
+	</update> 
+	
+</mapper>
