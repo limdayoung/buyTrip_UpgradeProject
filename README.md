@@ -1,8 +1,8 @@
 
 # buyTrip
 ### 해외직구 C2C 웹 플랫폼 (C2C Web Platform for Direct Purchase of Foreign goods)  
-  
-  
+<br/>
+
 ```
 Screenshots - main page
 ```
